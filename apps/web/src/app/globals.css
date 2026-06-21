@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 255 255 255;
+    --foreground: 15 23 42;
+  }
+
+  body {
+    @apply bg-white text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .circle-badge-learning { @apply bg-indigo-100 text-indigo-700; }
+  .circle-badge-business { @apply bg-amber-100  text-amber-700;  }
+  .circle-badge-fitness  { @apply bg-emerald-100 text-emerald-700; }
+  .circle-badge-farming  { @apply bg-lime-100   text-lime-700;   }
+}
