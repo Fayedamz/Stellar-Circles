@@ -1,21 +1,5 @@
-/**
- * PostgreSQL Membership model (Knex query builder).
- *
- * Table: memberships
- *   id          UUID PRIMARY KEY
- *   circle_id   UUID REFERENCES circles(id) ON DELETE CASCADE
- *   user_id     UUID REFERENCES users(id) ON DELETE CASCADE
- *   role        member_role ENUM (ADMIN, MEMBER)
- *   status      member_status ENUM (ACTIVE, INACTIVE, BANNED, PENDING)
- *   joined_at   TIMESTAMPTZ DEFAULT NOW()
- *
- * Unique constraint: (circle_id, user_id)
- */
-
-import { MemberRole, MemberStatus } from '@stellar-circles/shared';
-import { getPostgresClient } from '../../config/database';
-
-const TABLE = 'memberships';
+import { db } from "../../config/database";
+import { MemberRole, MemberStatus } from "@stellar-circles/shared";
 
 export interface MembershipRow {
   id: string;
@@ -26,73 +10,36 @@ export interface MembershipRow {
   joined_at: Date;
 }
 
-export interface CreateMembershipRow {
-  id: string;
-  circle_id: string;
-  user_id: string;
-  role?: MemberRole;
-  status?: MemberStatus;
-}
-
 export const MembershipModel = {
-  async findById(id: string): Promise<MembershipRow | undefined> {
-    const db = getPostgresClient();
-    return db<MembershipRow>(TABLE).where({ id }).first();
-  },
+  find: (circleId: string, userId: string) =>
+    db<MembershipRow>("memberships").where({ circle_id: circleId, user_id: userId }).first(),
 
-  async findByCircleAndUser(
-    circleId: string,
-    userId: string
-  ): Promise<MembershipRow | undefined> {
-    const db = getPostgresClient();
-    return db<MembershipRow>(TABLE).where({ circle_id: circleId, user_id: userId }).first();
-  },
+  findActive: (circleId: string, userId: string) =>
+    db<MembershipRow>("memberships")
+      .where({ circle_id: circleId, user_id: userId, status: MemberStatus.ACTIVE })
+      .first(),
 
-  async findByCircle(circleId: string): Promise<MembershipRow[]> {
-    const db = getPostgresClient();
-    return db<MembershipRow>(TABLE)
-      .where({ circle_id: circleId, status: MemberStatus.ACTIVE })
-      .orderBy('joined_at', 'asc');
-  },
+  listByCircle: (circleId: string) =>
+    db<MembershipRow>("memberships as m")
+      .join("users as u", "u.id", "m.user_id")
+      .where({ "m.circle_id": circleId, "m.status": MemberStatus.ACTIVE })
+      .select("m.id", "m.role", "m.joined_at", "u.id as userId", "u.username", "u.avatar_url"),
 
-  async findByUser(userId: string): Promise<MembershipRow[]> {
-    const db = getPostgresClient();
-    return db<MembershipRow>(TABLE)
-      .where({ user_id: userId, status: MemberStatus.ACTIVE });
-  },
+  listByUser: (userId: string) =>
+    db<MembershipRow>("memberships as m")
+      .join("circles as c", "c.id", "m.circle_id")
+      .where({ "m.user_id": userId, "m.status": MemberStatus.ACTIVE })
+      .select("m.role", "m.joined_at", "c.id", "c.name", "c.type", "c.status"),
 
-  async create(data: CreateMembershipRow): Promise<MembershipRow> {
-    const db = getPostgresClient();
-    const [row] = await db<MembershipRow>(TABLE)
-      .insert({
-        role: MemberRole.MEMBER,
-        status: MemberStatus.ACTIVE,
-        ...data,
-      })
-      .returning('*');
-    return row;
-  },
+  countAdmins: (circleId: string) =>
+    db<MembershipRow>("memberships")
+      .where({ circle_id: circleId, role: MemberRole.ADMIN, status: MemberStatus.ACTIVE })
+      .count("id as count")
+      .first(),
 
-  async updateStatus(id: string, status: MemberStatus): Promise<MembershipRow | undefined> {
-    const db = getPostgresClient();
-    const [row] = await db<MembershipRow>(TABLE)
-      .where({ id })
-      .update({ status })
-      .returning('*');
-    return row;
-  },
+  create: (data: Omit<MembershipRow, "joined_at">) =>
+    db<MembershipRow>("memberships").insert({ ...data, joined_at: new Date() }),
 
-  async updateRole(id: string, role: MemberRole): Promise<MembershipRow | undefined> {
-    const db = getPostgresClient();
-    const [row] = await db<MembershipRow>(TABLE)
-      .where({ id })
-      .update({ role })
-      .returning('*');
-    return row;
-  },
-
-  async delete(circleId: string, userId: string): Promise<void> {
-    const db = getPostgresClient();
-    await db<MembershipRow>(TABLE).where({ circle_id: circleId, user_id: userId }).delete();
-  },
+  update: (circleId: string, userId: string, data: Partial<MembershipRow>) =>
+    db<MembershipRow>("memberships").where({ circle_id: circleId, user_id: userId }).update(data),
 };

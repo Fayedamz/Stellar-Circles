@@ -4,6 +4,7 @@ import { db } from "../config/database";
 import { MemberRole, MemberStatus, MembershipType } from "@stellar-circles/shared";
 import { emit } from "../services/notification.service";
 import { logger } from "../utils/logger";
+import { verifyInviteToken } from "./invites.controller";
 
 export async function listMembers(req: Request, res: Response): Promise<void> {
   const { id: circleId } = req.params;
@@ -26,9 +27,16 @@ export async function joinCircle(req: Request, res: Response): Promise<void> {
   }
 
   if (circle.membership_type === MembershipType.INVITE) {
-    // TODO: validate invite token from req.body.inviteToken
-    res.status(403).json({ error: "This circle requires an invite link to join" });
-    return;
+    const { inviteToken } = req.body;
+    if (!inviteToken) {
+      res.status(403).json({ error: "This circle requires an invite token to join" });
+      return;
+    }
+    const payload = verifyInviteToken(inviteToken);
+    if (!payload || payload.circleId !== circleId) {
+      res.status(403).json({ error: "Invalid or expired invite token" });
+      return;
+    }
   }
 
   const existing = await db("memberships")

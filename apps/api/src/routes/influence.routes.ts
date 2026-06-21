@@ -1,13 +1,10 @@
-import { Router } from 'express';
-import { InfluenceController } from '../controllers/influence.controller';
-import { requireAuth } from '../middleware/auth.middleware';
+import { Router } from "express";
+import { getCircleInfluence, getMemberInfluenceInCircle } from "../controllers/influence.controller";
+import { authenticate } from "../middleware/auth.middleware";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
-/**
- * GET /api/users/:id/influence
- * Get a user's influence scores across all their circles.
- */
-router.get('/users/:id/influence', InfluenceController.getUserInfluence);
+router.get("/",            getCircleInfluence);
+router.get("/me",          authenticate, getMemberInfluenceInCircle);
 
 export default router;

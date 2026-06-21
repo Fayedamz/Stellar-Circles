@@ -1,14 +1,11 @@
-/**
- * Standalone members routes (for routes not nested under /circles).
- * Circle-scoped member routes are in circles.routes.ts.
- */
+import { Router } from "express";
+import { listMembers, joinCircle, leaveCircle } from "../controllers/members.controller";
+import { authenticate } from "../middleware/auth.middleware";
 
-import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.middleware';
+const router = Router({ mergeParams: true });
 
-const router = Router();
-
-// Placeholder for future standalone member management endpoints
-// e.g., GET /api/members/:id, PATCH /api/members/:id/role
+router.get("/",      listMembers);
+router.post("/join", authenticate, joinCircle);
+router.post("/leave",authenticate, leaveCircle);
 
 export default router;
