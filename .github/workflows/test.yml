@@ -1,0 +1,106 @@
+name: Tests
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main, develop]
+
+jobs:
+  contracts:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Cache Cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Run Circle Contract Tests
+        working-directory: ./contracts/circle
+        run: cargo test --verbose
+      
+      - name: Run Membership Contract Tests
+        working-directory: ./contracts/membership
+        run: cargo test --verbose
+      
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+      
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install
+      
+      - name: Lint Frontend
+        working-directory: ./apps/web
+        run: npm run lint
+      
+      - name: Build Frontend
+        working-directory: ./apps/web
+        run: npm run build
+      
+      # Uncomment when tests exist
+      # - name: Run Frontend Tests
+      #   working-directory: ./apps/web
+      #   run: npm test
+
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install
+      
+      - name: Lint Backend
+        working-directory: ./apps/api
+        run: npm run lint
+      
+      - name: Build Backend
+        working-directory: ./apps/api
+        run: npm run build
+      
+      # Uncomment when tests exist
+      # - name: Run Backend Tests
+      #   working-directory: ./apps/api
+      #   run: npm test
